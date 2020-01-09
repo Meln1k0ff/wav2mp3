@@ -6,8 +6,7 @@
 #include <ctime>
 #include <dirent.h>
 #include <map>
-#include <thread>
-#include <experimental/filesystem>
+#include <thread> //for detecting the number of CPU cores
 
 #include "lame_interface.h"
 
@@ -43,23 +42,31 @@ std::list<std::string> parse_directory(const char *dirname)
     DIR *dir;
     dirent *ent;
     std::list<std::string> dirEntries;
-    for (const auto& entry : std::experimental::filesystem::directory_iterator(dirname)) {
-        const auto filenameStr = entry.path().filename().string();
-        dirEntries.push_back(filenameStr);
+
+    if ((dir = opendir(dirname)) != NULL) {
+        // list directory
+        while ((ent = readdir(dir)) != NULL) {
+            dirEntries.push_back(std::string(ent->d_name));
+        }
+        closedir(dir);
+    } else {
+        std::cerr << "FATAL: Unable to parse directory." << std::endl;
+        exit(EXIT_FAILURE);
     }
+
     return dirEntries;
 }
 
 int main(int argc, char *argv[])
 {
-    //open as dir
-    unsigned concurentThreadsSupported = std::thread::hardware_concurrency();
-    int NUM_THREADS = concurentThreadsSupported;
+    //open as dir   
+    int NUM_THREADS = std::thread::hardware_concurrency();
         if (argc < 2) {
             std::cerr << "Usage: " << argv[0] << " PATH " << std::endl;
-            std::cerr << "   PATH   required. E.g F:\MyWavCollection" << std::endl;
+            std::cerr << "   PATH   required. E.g F:/MyWavCollection" << std::endl;
             return EXIT_FAILURE;
-        }        
+        }
+        std::cout << "LAME version: " << get_lame_version() << std::endl;
 
         // parse directory
         std::list<std::string> files = parse_directory(argv[1]);
@@ -76,7 +83,7 @@ int main(int argc, char *argv[])
         std::cout << "Found " << numFiles << " .wav file(s) in directory." << std::endl;
         if (!(numFiles>0)) return EXIT_SUCCESS;
 
-        // initialize pbFilesFinished array which contains true for all files which are currently already converted
+        // array which contains true for all files which are currently already converted
         bool *pbFilesFinished = new bool[numFiles];
         for (int i = 0; i < numFiles; i++) pbFilesFinished[i] = false;
 

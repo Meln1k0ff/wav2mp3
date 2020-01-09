@@ -1,10 +1,10 @@
 #include "wave.h"
 
 // function implementations
-int read_wave_header(ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &iDataOffset)
+int read_wave_header(std::ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &iDataOffset)
 {
 	if (!file.is_open()) return EXIT_FAILURE; // check if file is open
-	file.seekg(0, ios::beg); // rewind file
+    file.seekg(0, std::ios::beg); // rewind file
 
 	ANY_CHUNK_HDR chunkHdr;
 
@@ -28,11 +28,11 @@ int read_wave_header(ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &iDataO
 			break;
 		} else {
 			// skip this chunk (i.e. the next chunkSize bytes)
-			file.seekg(chunkHdr.chunkSize, ios::cur);
+            file.seekg(chunkHdr.chunkSize, std::ios::cur);
 		}
 	}
 	if (!bFoundFmt) { // found 'fmt ' at all?
-		cerr << "FATAL: Found no 'fmt ' chunk in file." << endl;
+        std::cerr << "FATAL: Found no 'fmt ' chunk in file." << std::endl;
 	} else if (EXIT_SUCCESS != check_format_data(hdr)) { // if so, check settings
 		delete hdr;
 		return EXIT_FAILURE;
@@ -50,11 +50,11 @@ int read_wave_header(ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &iDataO
 			iDataOffset = file.tellg();
 			break;
 		} else { // skip chunk
-			file.seekg(chunkHdr.chunkSize, ios::cur);
+            file.seekg(chunkHdr.chunkSize, std::ios::cur);
 		}
 	}
 	if (!bFoundData) { // found 'data' at all?
-		cerr << "FATAL: Found no 'data' chunk in file." << endl;
+        std::cerr << "FATAL: Found no 'data' chunk in file." << std::endl;
 		delete hdr;
 		return EXIT_FAILURE;
 	}
@@ -65,18 +65,18 @@ int read_wave_header(ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &iDataO
 int check_format_data(const FMT_DATA *hdr)
 {
 	if (hdr->wFmtTag != 0x01) {
-		cerr << "Bad non-PCM format:" << hdr->wFmtTag << endl;
+        std::cerr << "Bad non-PCM format:" << hdr->wFmtTag << std::endl;
 		return EXIT_FAILURE;
 	}
 	if (hdr->wChannels != 1 && hdr->wChannels != 2) {
-		cerr << "Bad number of channels (only mono or stereo supported)." << endl;
+        std::cerr << "Bad number of channels (only mono or stereo supported)." << std::endl;
 		return EXIT_FAILURE;
 	}
 	if (hdr->chunkSize != 16) {
-		cerr << "WARNING: 'fmt ' chunk size seems to be off." << endl;
+        std::cerr << "WARNING: 'fmt ' chunk size seems to be off." << std::endl;
 	}
 	if (hdr->wBlockAlign != hdr->wBitsPerSample * hdr->wChannels / 8) {
-		cerr << "WARNING: 'fmt ' has strange bytes/bits/channels configuration." << endl;
+        std::cerr << "WARNING: 'fmt ' has strange bytes/bits/channels configuration." << std::endl;
 	}
 
 	return EXIT_SUCCESS;
@@ -87,11 +87,11 @@ int check_riff_header(const RIFF_HDR *rHdr)
 	if (0 == strncmp(rHdr->rID, "RIFF", 4) && 0 == strncmp(rHdr->wID, "WAVE", 4) && rHdr->fileLen > 0)
 		return EXIT_SUCCESS;
 
-	cerr << "Bad RIFF header!" << endl;
+    std::cerr << "Bad RIFF header!" << std::endl;
 	return EXIT_FAILURE;
 }
 
-void get_pcm_channels_from_wave(ifstream &file, const FMT_DATA* hdr, short* &leftPcm, short* &rightPcm, const int iDataSize,
+void get_pcm_channels_from_wave(std::ifstream &file, const FMT_DATA* hdr, short* &leftPcm, short* &rightPcm, const int iDataSize,
 	const int iDataOffset)
 {
 	int idx;
@@ -119,26 +119,14 @@ void get_pcm_channels_from_wave(ifstream &file, const FMT_DATA* hdr, short* &lef
 	}
 
 	assert(rightPcm == NULL || hdr->wChannels != 1);
-
-#ifdef __VERBOSE_
-	cout << "File parsed successfully." << endl;
-#endif
 }
 
 int read_wave(const char *filename, FMT_DATA* &hdr, short* &leftPcm, short* &rightPcm, int &iDataSize)
 {
-#ifdef __VERBOSE_
-	streamoff size;
-#endif
-
-	ifstream inFile(filename, ios::in | ios::binary);
+    std::ifstream inFile(filename, std::ios::in | std::ios::binary);
 	if (inFile.is_open()) {
 		// determine size and allocate buffer
-		inFile.seekg(0, ios::end);
-#ifdef __VERBOSE_
-		size = inFile.tellg();
-		cout << "Opened file. Allocating " << size << " bytes." << endl;
-#endif
+        inFile.seekg(0, std::ios::end);
 
 		// parse file
 		int iDataOffset = 0;

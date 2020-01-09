@@ -14,7 +14,7 @@ int encode_to_file(lame_global_flags *gfp, const FMT_DATA *hdr, const short *lef
     int mp3size = lame_encode_buffer(gfp, (short*)leftPcm, (short*)rightPcm, numSamples, mp3Buffer, mp3BufferSize);
     if (!(mp3size > 0)) {
         delete[] mp3Buffer;
-        cerr << "No data was encoded by lame_encode_buffer. Return code: " << mp3size << endl;
+        std::cerr << "No data was encoded by lame_encode_buffer. Return code: " << mp3size << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -61,22 +61,19 @@ void *complete_encode_worker(void* arg)
         if (!bFoundWork) {// done yet?
             return NULL; // break
         }
-        string sMyFile = args->pFilenames->at(iFileIdx);
-        string sMyFileOut = sMyFile.substr(0, sMyFile.length() - 3) + "mp3";
+        std::string sMyFile = args->pFilenames->at(iFileIdx);
+        std::string sMyFileOut = sMyFile.substr(0, sMyFile.length() - 3) + "mp3";
 
         // start working
         FMT_DATA *hdr = NULL;
         short *leftPcm = NULL, *rightPcm = NULL;
         // init encoding params
         lame_global_flags *gfp = lame_init();
-        lame_set_brate(gfp, 192); // increase bitrate
+        lame_set_brate(gfp, 320); // increase bitrate
         lame_set_quality(gfp, 1); // increase quality level
         lame_set_bWriteVbrTag(gfp, 0);
 
         // parse wave file
-#ifdef __VERBOSE_
-        printf("Parsing %s ...\n", sMyFile.c_str());
-#endif
         int iDataSize = -1;
         ret = read_wave(sMyFile.c_str(), hdr, leftPcm, rightPcm, iDataSize);
         if (ret != EXIT_SUCCESS) {
@@ -89,14 +86,14 @@ void *complete_encode_worker(void* arg)
         // check params
         ret = lame_init_params(gfp);
         if (ret != 0) {
-            cerr << "Invalid encoding parameters! Skipping file." << endl;
+            std::cerr << "Invalid encoding parameters! Skipping file." << std::endl;
             continue;
         }
 
         // encode to mp3
         ret = encode_to_file(gfp, hdr, leftPcm, rightPcm, iDataSize, sMyFileOut.c_str());
         if (ret != EXIT_SUCCESS) {
-            cerr << "Unable to encode mp3: " << sMyFileOut.c_str() << endl;
+            std::cerr << "Unable to encode mp3: " << sMyFileOut.c_str() << std::endl;
             continue;
         }
 
