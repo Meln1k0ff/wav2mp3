@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
         // create worker threads
         for (int i = 0; i < NUM_THREADS; i++) {
-            pthread_create(&threads[i], NULL, complete_encode_worker, (void*)&threadArgs[i]);
+            pthread_create(&threads[i], NULL, encode_worker, (void*)&threadArgs[i]);
         }
 
         // synchronize / join threads

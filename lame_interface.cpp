@@ -36,7 +36,7 @@ int encode_to_file(lame_global_flags *gfp, const FMT_DATA *hdr, const short *lef
     return EXIT_SUCCESS;
 }
 
-void *complete_encode_worker(void* arg)
+void *encode_worker(void* arg)
 {
     int ret;
     ENC_WRK_ARGS *args = (ENC_WRK_ARGS*)arg; // parse argument struct

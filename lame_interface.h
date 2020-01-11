@@ -33,13 +33,13 @@ int encode_to_file(lame_global_flags *gfp, const FMT_DATA *hdr, const short *lef
 // threading worker routines conforming to POSIX interface
 /////////////////////
 
-/* complete_encode_worker
+/*  encode_worker
  *  Main worker thread routine which is supplied with a list of filenames, a status array indicating which files
  *  are already worked upon, and some additional info via a ENC_WRK_ARGS struct.
  *  As long as there are still unprocessed filenames, this routine will fetch the next free filename, mark it as
  *  processed, and execute the complete conversion from reading .wav to writing .mp3.
  */
-void *complete_encode_worker(void* arg);
+void *encode_worker(void* arg);
 
 
 #endif // __LAME_INTERFACE_H_
