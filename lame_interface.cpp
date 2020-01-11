@@ -5,8 +5,7 @@ static pthread_mutex_t mutFilesFinished = PTHREAD_MUTEX_INITIALIZER;
 int encode_to_file(lame_global_flags *gfp, const FMT_DATA *hdr, const short *leftPcm, const short *rightPcm,
     const int iDataSize, const char *filename)
 {
-    int numSamples = iDataSize / hdr->wBlockAlign;
-
+    int numSamples = iDataSize / hdr->wBlockAlign; // divide by 4
     int mp3BufferSize = numSamples * 5 / 4 + 7200; // worst case estimate
     unsigned char *mp3Buffer = new unsigned char[mp3BufferSize];
 
@@ -70,17 +69,19 @@ void *complete_encode_worker(void* arg)
         // init encoding params
         lame_global_flags *gfp = lame_init();
         lame_set_brate(gfp, 320); // increase bitrate
-        lame_set_quality(gfp, 1); // increase quality level
-        lame_set_bWriteVbrTag(gfp, 0);
-
         // parse wave file
         int iDataSize = -1;
+        //check if hdr is malloced correctly
         ret = read_wave(sMyFile.c_str(), hdr, leftPcm, rightPcm, iDataSize);
+        //hdr->dwSamplesPerSec;
         if (ret != EXIT_SUCCESS) {
-            printf("Error in file %s. Skipping.\n", sMyFile.c_str());
+            std::cout << "Error in file" << sMyFile.c_str() << "Skipping" << std::endl;
             continue; // see if there's more to do
         }
+        //check wave sample frequency
 
+        lame_set_in_samplerate(gfp,hdr->dwSamplesPerSec);
+        lame_set_quality(gfp, 2); // increase quality level
         lame_set_num_channels(gfp, hdr->wChannels);
         lame_set_num_samples(gfp, iDataSize / hdr->wBlockAlign);
         // check params
@@ -97,7 +98,7 @@ void *complete_encode_worker(void* arg)
             continue;
         }
 
-        printf("[:%i][ok] .... %s\n", args->iThreadId, sMyFile.c_str());
+        std::cout << "File [" << sMyFile.c_str() << "] converted succesfully!" << std::endl;
         ++args->iProcessedFiles;
 
         lame_close(gfp);

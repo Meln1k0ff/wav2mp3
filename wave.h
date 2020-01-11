@@ -20,10 +20,10 @@ typedef struct {
 typedef struct {
     char ID[4]; // "fmt "
     unsigned int chunkSize; // should be 16
-    unsigned short wFmtTag; // 0x01 for PCM - other modes unsupported
+    unsigned short wFmtTag; // 0x01 for PCM
     unsigned short wChannels; // number of channels (1 mono, 2 stereo)
-    unsigned int dwSamplesPerSec; // e.g. 44100
-    unsigned int dwBytesPerSec;   // e.g. 4*44100
+    unsigned int dwSamplesPerSec; // e.g. 44100 //bb80
+    unsigned int dwBytesPerSec;   // e.g. 4*44100 // 02ee00
     unsigned short wBlockAlign; // bytes per sample (all channels, e.g. 4)
     unsigned short wBitsPerSample; // bits per sample and channel, e.g. 16
 } FMT_DATA;
@@ -31,6 +31,7 @@ typedef struct {
 /* Chunk header for any chunk type in IFF format
  * such as 'fmt ' or 'data' (we ignore everything else).
  */
+
 typedef struct {
     char ID[4]; // any identifier
     unsigned int chunkSize;

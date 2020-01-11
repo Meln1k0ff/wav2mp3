@@ -4,21 +4,20 @@
 int read_wave_header(std::ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &iDataOffset)
 {
 	if (!file.is_open()) return EXIT_FAILURE; // check if file is open
-    file.seekg(0, std::ios::beg); // rewind file
-
+    file.seekg(0, std::ios::beg); // rewind file   
 	ANY_CHUNK_HDR chunkHdr;
 
     // validate RIFF header
 	RIFF_HDR rHdr;
 	file.read((char*)&rHdr, sizeof(RIFF_HDR));
-	if (EXIT_SUCCESS != check_riff_header(&rHdr))
+    if (check_riff_header(&rHdr) != EXIT_SUCCESS)
 		return EXIT_FAILURE;
 
-	// then continue parsing file until we find the 'fmt ' chunk
+    // continue parsing file until we find the 'fmt ' chunk
 	bool bFoundFmt = false;
 	while (!bFoundFmt && !file.eof()) {
 		file.read((char*)&chunkHdr, sizeof(ANY_CHUNK_HDR));
-		if (0 == strncmp(chunkHdr.ID, "fmt ", 4)) {
+        if (strncmp(chunkHdr.ID, "fmt ", 4) == 0) {
 			// rewind and parse the complete chunk
 			file.seekg((int)file.tellg()-sizeof(ANY_CHUNK_HDR));
 
@@ -26,24 +25,24 @@ int read_wave_header(std::ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &i
 			file.read((char*)hdr, sizeof(FMT_DATA));
 			bFoundFmt = true;
 			break;
-		} else {
-			// skip this chunk (i.e. the next chunkSize bytes)
+		} else {			
             file.seekg(chunkHdr.chunkSize, std::ios::cur);
 		}
 	}
-	if (!bFoundFmt) { // found 'fmt ' at all?
+    //ignore files without fmt chunk
+    if (!bFoundFmt) { //not found 'fmt ' at all?
         std::cerr << "FATAL: Found no 'fmt ' chunk in file." << std::endl;
-	} else if (EXIT_SUCCESS != check_format_data(hdr)) { // if so, check settings
+        delete hdr;
+        return EXIT_FAILURE;
+    } else if (check_format_data(hdr) != EXIT_SUCCESS) { // if so, check settings
 		delete hdr;
 		return EXIT_FAILURE;
 	}
 
-	// finally, look for 'data' chunk
+    // look for 'data' chunk
 	bool bFoundData = false;
-	while (!bFoundData && !file.eof()) {
-		//printf("Reading chunk at 0x%X:", (int)file.tellg());
-		file.read((char*)&chunkHdr, sizeof(ANY_CHUNK_HDR));
-		//printf("%s\n", string(chunkHdr.ID, 4).c_str());
+	while (!bFoundData && !file.eof()) {		
+		file.read((char*)&chunkHdr, sizeof(ANY_CHUNK_HDR));		
 		if (0 == strncmp(chunkHdr.ID, "data", 4)) {
 			bFoundData = true;
 			iDataSize = chunkHdr.chunkSize;
@@ -53,7 +52,7 @@ int read_wave_header(std::ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &i
             file.seekg(chunkHdr.chunkSize, std::ios::cur);
 		}
 	}
-	if (!bFoundData) { // found 'data' at all?
+    if (!bFoundData) { //not found 'data' at all?
         std::cerr << "FATAL: Found no 'data' chunk in file." << std::endl;
 		delete hdr;
 		return EXIT_FAILURE;
@@ -72,11 +71,18 @@ int check_format_data(const FMT_DATA *hdr)
         std::cerr << "Bad number of channels (only mono or stereo supported)." << std::endl;
 		return EXIT_FAILURE;
 	}
+    if (hdr->dwSamplesPerSec == 0)
+    {
+        std::cerr << "Bad sampling frequency (only 8, 16, 22, 44, or 48 kHz are supported)." << std::endl;
+        return EXIT_FAILURE;
+    }
 	if (hdr->chunkSize != 16) {
         std::cerr << "WARNING: 'fmt ' chunk size seems to be off." << std::endl;
+        return EXIT_FAILURE;
 	}
 	if (hdr->wBlockAlign != hdr->wBitsPerSample * hdr->wChannels / 8) {
         std::cerr << "WARNING: 'fmt ' has strange bytes/bits/channels configuration." << std::endl;
+        return EXIT_FAILURE;
 	}
 
 	return EXIT_SUCCESS;
@@ -93,32 +99,36 @@ int check_riff_header(const RIFF_HDR *rHdr)
 
 void get_pcm_channels_from_wave(std::ifstream &file, const FMT_DATA* hdr, short* &leftPcm, short* &rightPcm, const int iDataSize,
 	const int iDataOffset)
-{
+{    
 	int idx;
-	int numSamples = iDataSize / hdr->wBlockAlign;
+    int numSamples = iDataSize / hdr->wBlockAlign;//divide by 4
 
 	leftPcm = NULL;
 	rightPcm = NULL;
 
 	// allocate PCM arrays
-	leftPcm = new short[iDataSize / hdr->wChannels / sizeof(short)];
+    leftPcm = new short[iDataSize /*/ hdr->wChannels / sizeof(short)*/]; // n / 1 / 2 for mono
+//    std::cout << "leftPcm size="  << sizeof(leftPcm) << std::endl; //8
+//    std::cout << "hdr->wChannels = " << hdr->wChannels << std::endl;
+
 	if (hdr->wChannels > 1)
-		rightPcm = new short[iDataSize / hdr->wChannels / sizeof(short)];
+        rightPcm = new short[iDataSize /*/ hdr->wChannels / sizeof(short)*/]; // n / 2 / 2 for stereo
 
 	// capture each sample
 	file.seekg(iDataOffset);// set file pointer to beginning of data array
 
 	if (hdr->wChannels == 1) {
 		file.read((char*)leftPcm, hdr->wBlockAlign * numSamples);
-	} else {
-		for (idx = 0; idx < numSamples; idx++) {
-			file.read((char*)&leftPcm[idx], hdr->wBlockAlign / hdr->wChannels);
-			if (hdr->wChannels>1)
-				file.read((char*)&rightPcm[idx], hdr->wBlockAlign / hdr->wChannels);
-		}
+    } else { // if stereo
+        for (idx = 0; idx < numSamples; idx++) {
+            //?
+            file.read((char*)&leftPcm[idx], hdr->wBlockAlign / hdr->wChannels);
+            if (hdr->wChannels>1)
+                file.read((char*)&rightPcm[idx], hdr->wBlockAlign / hdr->wChannels);
+        }
 	}
 
-	assert(rightPcm == NULL || hdr->wChannels != 1);
+    //assert(rightPcm == NULL || hdr->wChannels != 1);
 }
 
 int read_wave(const char *filename, FMT_DATA* &hdr, short* &leftPcm, short* &rightPcm, int &iDataSize)
@@ -132,7 +142,7 @@ int read_wave(const char *filename, FMT_DATA* &hdr, short* &leftPcm, short* &rig
 		int iDataOffset = 0;
         if (read_wave_header(inFile, hdr, iDataSize, iDataOffset) != EXIT_SUCCESS) {
 			return EXIT_FAILURE;
-		}
+		}      
 		get_pcm_channels_from_wave(inFile, hdr, leftPcm, rightPcm, iDataSize, iDataOffset);
 		inFile.close();
 

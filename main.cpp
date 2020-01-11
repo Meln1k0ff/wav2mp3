@@ -36,7 +36,7 @@ bool file_extension(const std::string &fullString, const std::string &subString)
             subString_l) == 0);
     }
 }
-//c++17
+
 std::list<std::string> parse_directory(const char *dirname)
 {
     DIR *dir;
@@ -120,8 +120,7 @@ int main(int argc, char *argv[])
 
         // write statistics
         int iProcessedTotal = 0;
-        for (int i = 0; i < NUM_THREADS; i++) {
-            std::cout << "Thread " << i << " processed " << threadArgs[i].iProcessedFiles << " files." << std::endl;
+        for (int i = 0; i < NUM_THREADS; i++) {           
             iProcessedTotal += threadArgs[i].iProcessedFiles;
         }
 
