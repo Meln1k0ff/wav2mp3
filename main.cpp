@@ -14,6 +14,7 @@
 
 #ifdef WIN32
 #define PATHSEP "\\"
+#include <windows.h>
 #else
 #define PATHSEP "/"
 #endif
@@ -59,8 +60,15 @@ std::list<std::string> parse_directory(const char *dirname)
 
 int main(int argc, char *argv[])
 {
-    //open as dir   
-    int NUM_THREADS = std::thread::hardware_concurrency();
+    int NUM_THREADS = 1;
+    //very dumb hack because std::thread is buggy in MinGW
+#ifdef WIN32
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    NUM_THREADS = sysinfo.dwNumberOfProcessors;
+#else
+    NUM_THREADS = std::thread::hardware_concurrency();
+#endif
         if (argc < 2) {
             std::cerr << "Usage: " << argv[0] << " PATH " << std::endl;
             std::cerr << "   PATH   required. E.g F:/MyWavCollection" << std::endl;

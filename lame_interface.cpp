@@ -75,7 +75,7 @@ void *encode_worker(void* arg)
         ret = read_wave(sMyFile.c_str(), hdr, leftPcm, rightPcm, iDataSize);
         //hdr->dwSamplesPerSec;
         if (ret != EXIT_SUCCESS) {
-            std::cout << "Error in file" << sMyFile.c_str() << "Skipping" << std::endl;
+            std::cout << "Error in file " << sMyFile.c_str() << ". Skipping" << std::endl;
             continue; // see if there's more to do
         }
         //check wave sample frequency
