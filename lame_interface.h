@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <sstream>
-#include "../lame-3.100/lame-3.100/include/lame.h"
+#include "../lame-3.100/include/lame.h"
 #include "wave.h"
 #include "pthread.h"
 

@@ -1,10 +1,10 @@
 #include "wave.h"
-
+#include <iostream>
 // function implementations
 int read_wave_header(std::ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &iDataOffset)
 {
 	if (!file.is_open()) return EXIT_FAILURE; // check if file is open
-    file.seekg(0, std::ios::beg); // rewind file   
+    file.seekg(0, std::ios::beg); // rewind file
 	ANY_CHUNK_HDR chunkHdr;
 
     // validate RIFF header
@@ -25,7 +25,7 @@ int read_wave_header(std::ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &i
 			file.read((char*)hdr, sizeof(FMT_DATA));
 			bFoundFmt = true;
 			break;
-		} else {			
+		} else {
             file.seekg(chunkHdr.chunkSize, std::ios::cur);
 		}
 	}
@@ -41,8 +41,8 @@ int read_wave_header(std::ifstream &file, FMT_DATA *&hdr, int &iDataSize, int &i
 
     // look for 'data' chunk
 	bool bFoundData = false;
-	while (!bFoundData && !file.eof()) {		
-		file.read((char*)&chunkHdr, sizeof(ANY_CHUNK_HDR));		
+	while (!bFoundData && !file.eof()) {
+		file.read((char*)&chunkHdr, sizeof(ANY_CHUNK_HDR));
 		if (0 == strncmp(chunkHdr.ID, "data", 4)) {
 			bFoundData = true;
 			iDataSize = chunkHdr.chunkSize;
@@ -99,17 +99,15 @@ int check_riff_header(const RIFF_HDR *rHdr)
 
 void get_pcm_channels_from_wave(std::ifstream &file, const FMT_DATA* hdr, short* &leftPcm, short* &rightPcm, const int iDataSize,
 	const int iDataOffset)
-{    
+{
 	int idx;
-    int numSamples = iDataSize / hdr->wBlockAlign;//divide by 4
+  int numSamples = iDataSize / hdr->wBlockAlign;//divide by 4
 
 	leftPcm = NULL;
 	rightPcm = NULL;
 
 	// allocate PCM arrays
-    leftPcm = new short[iDataSize /*/ hdr->wChannels / sizeof(short)*/]; // n / 1 / 2 for mono
-//    std::cout << "leftPcm size="  << sizeof(leftPcm) << std::endl; //8
-//    std::cout << "hdr->wChannels = " << hdr->wChannels << std::endl;
+  leftPcm = new short[iDataSize /*/ hdr->wChannels / sizeof(short)*/]; // n / 1 / 2 for mono
 
 	if (hdr->wChannels > 1)
         rightPcm = new short[iDataSize /*/ hdr->wChannels / sizeof(short)*/]; // n / 2 / 2 for stereo
@@ -126,14 +124,13 @@ void get_pcm_channels_from_wave(std::ifstream &file, const FMT_DATA* hdr, short*
             if (hdr->wChannels>1)
                 file.read((char*)&rightPcm[idx], hdr->wBlockAlign / hdr->wChannels);
         }
-	}
-
-    //assert(rightPcm == NULL || hdr->wChannels != 1);
+	}    
 }
 
 int read_wave(const char *filename, FMT_DATA* &hdr, short* &leftPcm, short* &rightPcm, int &iDataSize)
 {
-    std::ifstream inFile(filename, std::ios::in | std::ios::binary);
+  std::ifstream inFile(filename, std::ios::in | std::ios::binary);
+
 	if (inFile.is_open()) {
 		// determine size and allocate buffer
         inFile.seekg(0, std::ios::end);
@@ -142,12 +139,14 @@ int read_wave(const char *filename, FMT_DATA* &hdr, short* &leftPcm, short* &rig
 		int iDataOffset = 0;
         if (read_wave_header(inFile, hdr, iDataSize, iDataOffset) != EXIT_SUCCESS) {
 			return EXIT_FAILURE;
-		}      
+		}
+
 		get_pcm_channels_from_wave(inFile, hdr, leftPcm, rightPcm, iDataSize, iDataOffset);
 		inFile.close();
 
 		// cleanup and return
 		return EXIT_SUCCESS;
 	}
+	std::cout << "inFile.is_open" << std::endl;
 	return EXIT_FAILURE;
 }

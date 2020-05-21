@@ -1,12 +1,11 @@
 #include <iostream>
 #include <list>
 #include <string>
-#include <cstring>
 #include <vector>
 #include <ctime>
-#include <dirent.h>
 #include <map>
-#include <thread> //for detecting the number of CPU cores
+#include <thread>
+#include <experimental/filesystem>
 
 #include "lame_interface.h"
 
@@ -40,17 +39,19 @@ bool file_extension(const std::string &fullString, const std::string &subString)
 
 std::list<std::string> parse_directory(const char *dirname)
 {
-    DIR *dir;
-    dirent *ent;
     std::list<std::string> dirEntries;
 
-    if ((dir = opendir(dirname)) != NULL) {
-        // list directory
-        while ((ent = readdir(dir)) != NULL) {
-            dirEntries.push_back(std::string(ent->d_name));
+    std::string path(dirname);
+    if (std::experimental::filesystem::exists(path))
+    {
+        for (const auto & entry : std::experimental::filesystem::directory_iterator(path))
+        {
+            std::cout << entry.path() << std::endl;
+            dirEntries.push_back(std::string(entry.path()));
         }
-        closedir(dir);
-    } else {
+    }
+    else
+    {
         std::cerr << "FATAL: Unable to parse directory." << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -83,7 +84,8 @@ int main(int argc, char *argv[])
         for (auto file : files) {
             // check if it's a wave file and add path
             if (file_extension(file, std::string(".wav"))) {
-                wavFiles.push_back(std::string(argv[1]) + std::string(PATHSEP) + file);
+
+                wavFiles.push_back(file);
             }
         }
         int numFiles = wavFiles.size();
@@ -95,9 +97,10 @@ int main(int argc, char *argv[])
         bool *pbFilesFinished = new bool[numFiles];
         for (int i = 0; i < numFiles; i++) pbFilesFinished[i] = false;
 
-
         // initialize threads array and argument arrays
-        pthread_t *threads = new pthread_t[NUM_THREADS];
+        //pthread_t *threads = new pthread_t[NUM_THREADS];
+        std::thread threads[NUM_THREADS];
+
         ENC_WRK_ARGS *threadArgs = (ENC_WRK_ARGS*)malloc(NUM_THREADS * sizeof(ENC_WRK_ARGS));
         for (int i = 0; i < NUM_THREADS; i++) {
             threadArgs[i].iNumFiles = numFiles;
@@ -109,18 +112,15 @@ int main(int argc, char *argv[])
 
         // timestamp
         std::clock_t tBegin = clock();
-
         // create worker threads
         for (int i = 0; i < NUM_THREADS; i++) {
-            pthread_create(&threads[i], NULL, encode_worker, (void*)&threadArgs[i]);
+            //rewrite to lambda
+            threads[i] = std::thread(encode_worker, &threadArgs[i]);
         }
 
         // synchronize / join threads
         for (int i = 0; i < NUM_THREADS; i++) {
-            int ret = pthread_join(threads[i], NULL);
-            if (ret != 0) {
-                std::cerr << "A POSIX thread error occured." << std::endl;
-            }
+            threads[i].join();
         }
 
         // timestamp
@@ -128,14 +128,13 @@ int main(int argc, char *argv[])
 
         // write statistics
         int iProcessedTotal = 0;
-        for (int i = 0; i < NUM_THREADS; i++) {           
+        for (int i = 0; i < NUM_THREADS; i++) {
             iProcessedTotal += threadArgs[i].iProcessedFiles;
         }
 
         std::cout << "Converted " << iProcessedTotal << " out of " << numFiles << " files in total in " <<
             double(tEnd-tBegin) / CLOCKS_PER_SEC << "s." << std::endl;
 
-        delete[] threads;
         delete[] threadArgs;
 
         std::cout << "Done." << std::endl;

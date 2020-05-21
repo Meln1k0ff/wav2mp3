@@ -1,6 +1,9 @@
 #include "lame_interface.h"
+#include <mutex>
+#include <fstream>
+#include <iostream>
 
-static pthread_mutex_t mutFilesFinished = PTHREAD_MUTEX_INITIALIZER;
+std::mutex mutFilesFinished;
 
 int encode_to_file(lame_global_flags *gfp, const FMT_DATA *hdr, const short *leftPcm, const short *rightPcm,
     const int iDataSize, const char *filename)
@@ -18,7 +21,10 @@ int encode_to_file(lame_global_flags *gfp, const FMT_DATA *hdr, const short *lef
     }
 
     // write to file
+    //
     FILE *out = fopen(filename, "wb+");
+    std::ofstream ofs;
+
     fwrite((void*)mp3Buffer, sizeof(unsigned char), mp3size, out);
 
     // call to lame_encode_flush
@@ -39,14 +45,16 @@ int encode_to_file(lame_global_flags *gfp, const FMT_DATA *hdr, const short *lef
 void *encode_worker(void* arg)
 {
     int ret;
-    ENC_WRK_ARGS *args = (ENC_WRK_ARGS*)arg; // parse argument struct
+    ENC_WRK_ARGS *args = reinterpret_cast<ENC_WRK_ARGS*>(arg); // parse argument struct
 
     while (true) {
         // determine which file to process next
         bool bFoundWork = false;
         int iFileIdx = -1;
 
-        pthread_mutex_lock(&mutFilesFinished);
+        //pthread_mutex_lock(&mutFilesFinished);
+        mutFilesFinished.lock();
+
         for (int i = 0; i < args->iNumFiles; i++) {
             if (!args->pbFilesFinished[i]) {
                 args->pbFilesFinished[i] = true; // mark as being worked on
@@ -55,7 +63,8 @@ void *encode_worker(void* arg)
                 break;
             }
         }
-        pthread_mutex_unlock(&mutFilesFinished);
+        //pthread_mutex_unlock(&mutFilesFinished);
+        mutFilesFinished.unlock();
 
         if (!bFoundWork) {// done yet?
             return NULL; // break
@@ -68,12 +77,12 @@ void *encode_worker(void* arg)
         short *leftPcm = NULL, *rightPcm = NULL;
         // init encoding params
         lame_global_flags *gfp = lame_init();
-        lame_set_brate(gfp, 320); // increase bitrate
+        lame_set_brate(gfp, 320);
         // parse wave file
         int iDataSize = -1;
-        //check if hdr is malloced correctly
+
         ret = read_wave(sMyFile.c_str(), hdr, leftPcm, rightPcm, iDataSize);
-        //hdr->dwSamplesPerSec;
+
         if (ret != EXIT_SUCCESS) {
             std::cout << "Error in file " << sMyFile.c_str() << ". Skipping" << std::endl;
             continue; // see if there's more to do
@@ -106,6 +115,4 @@ void *encode_worker(void* arg)
         if (rightPcm != NULL) delete[] rightPcm;
         if (hdr != NULL) delete hdr;
     }
-    pthread_exit((void*)0);
 }
-
